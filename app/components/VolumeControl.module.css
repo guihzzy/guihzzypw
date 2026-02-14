@@ -1,0 +1,147 @@
+/* Container Principal */
+.container {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    background: rgba(14, 14, 14, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 5px;
+    height: 42px;
+    width: 42px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    /* Slowed down expansion for a very smooth feel */
+    transition: width 0.9s cubic-bezier(0.19, 1, 0.22, 1), background 0.4s ease, border-color 0.4s ease;
+    overflow: hidden;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.container:hover {
+    width: 170px;
+    background: rgba(20, 20, 20, 0.9);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Ícone */
+.iconButton {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    border-radius: 8px;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease;
+    color: rgba(255, 255, 255, 0.9);
+    margin-left: 1px;
+}
+
+.iconButton:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: scale(1.05);
+}
+
+.iconButton:active {
+    transform: scale(0.92);
+}
+
+/* SVG Animations */
+.speakerBody {
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center;
+}
+
+.muted .speakerBody {
+    transform: scale(0.85);
+    /* Slightly more subtle scale */
+}
+
+.wave {
+    transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: left center;
+    opacity: 1;
+}
+
+.muted .wave {
+    opacity: 0;
+    transform: translateX(-3px) scale(0.7);
+}
+
+.xMark {
+    transition: stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+    stroke-dasharray: 12;
+    stroke-dashoffset: 12;
+    opacity: 0;
+    transform-origin: center;
+}
+
+.muted .xMark {
+    stroke-dashoffset: 0;
+    /* Draw in */
+    opacity: 1;
+}
+
+/* Wrapper do Slider */
+.sliderWrapper {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    padding-left: 12px;
+    padding-right: 14px;
+    opacity: 0;
+    transform: translateX(-15px);
+    pointer-events: none;
+    /* Smoother fade in matching container expansion */
+    transition: opacity 0.4s ease, transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.container:hover .sliderWrapper {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+    transition-delay: 0.1s;
+}
+
+/* Custom Slider Track */
+.track {
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+/* Barra de Progresso (Fill) */
+.fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background: #fff;
+    border-radius: 2px;
+    will-change: width;
+    /* Slower, luxurious ease for fill retractions */
+    transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* Input Range Invisível */
+.rangeInput {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 100%;
+    height: 20px;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 3;
+    margin: 0;
+}
