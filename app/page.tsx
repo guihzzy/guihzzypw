@@ -5,6 +5,8 @@ import { useRef, useState, useEffect } from 'react'
 import styles from './page.module.css'
 import VolumeControl from './components/VolumeControl'
 import valorantIcon from './assets/valorant.png'
+import robloxIcon from './assets/roblox.png'
+import beamngIcon from './assets/BeamNG.drive.png'
 
 // Tipos da API
 interface SpotifyData {
@@ -673,9 +675,17 @@ const ProfileCard = React.memo(({
             {user.outras_atividades?.filter(a => isPlayingNow(a)).filter((a, i, s) => i === s.findIndex(b => b.nome === a.nome && b.timestamps?.start === a.timestamps?.start)).map((a, i) => {
               const playingTime = getPlayingTime(a, currentTime);
               const apiIconSrc = a.assets?.grande || a.assets?.pequena;
-              const isVal = a.nome.toLowerCase() === 'valorant';
-              const valIcon = typeof valorantIcon === 'string' ? valorantIcon : (valorantIcon as any).src || (valorantIcon as any).default || valorantIcon;
-              const iconSrc = apiIconSrc || (isVal ? valIcon : null);
+
+              const iconMap: Record<string, any> = {
+                'valorant': valorantIcon,
+                'roblox': robloxIcon,
+                'beamng.drive': beamngIcon
+              };
+
+              const localIconRaw = iconMap[a.nome.toLowerCase()];
+              const localIcon = localIconRaw ? (typeof localIconRaw === 'string' ? localIconRaw : (localIconRaw as any).src || (localIconRaw as any).default || localIconRaw) : null;
+
+              const iconSrc = apiIconSrc || localIcon;
               return (
                 <div key={`${a.nome}-${i}`} className={styles.activityItem}>
                   <ActivityIcon

@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import styles from './page.module.css'
 import robloxIcon from '../assets/roblox.png'
 import valorantIcon from '../assets/valorant.png'
+import beamngIcon from '../assets/BeamNG.drive.png'
 
 // Tipos da API
 interface SpotifyData {
@@ -376,7 +377,7 @@ export default function Profile() {
     // Resetar contador (zerar)
     localStorage.removeItem('viewCount')
     setViewCount(0)
-    
+
     // Incrementar contador de visualizações toda vez que alguém entrar no site
     const incrementViewCount = () => {
       const stored = localStorage.getItem('viewCount')
@@ -391,7 +392,7 @@ export default function Profile() {
 
     fetchUserData()
     fetchDiscordData()
-    
+
     // Atualizar dados da API a cada 3 segundos
     const apiInterval = setInterval(() => {
       fetchUserData()
@@ -417,7 +418,7 @@ export default function Profile() {
   // Detectar quando para de jogar e animar
   useEffect(() => {
     const temAtividadesAtivas = userData?.outras_atividades?.some(a => isPlayingNow(a)) || false
-    
+
     if (temAtividadesAtivas) {
       setShowActivity(true)
       setIsActivityClosing(false)
@@ -428,7 +429,7 @@ export default function Profile() {
         setShowActivity(false)
         setIsActivityClosing(false)
       }, 400) // Duração da animação (sincronizado com CSS)
-      
+
       return () => clearTimeout(timer)
     }
   }, [userData?.outras_atividades, showActivity])
@@ -436,15 +437,15 @@ export default function Profile() {
   // Detectar quando a decoração é removida e animar
   useEffect(() => {
     if (!userData) return
-    
+
     const currentDecoration = userData.avatarDecoration || null
-    
+
     // Inicializar previousDecoration se ainda não foi definido
     if (previousDecoration === null && currentDecoration) {
       setPreviousDecoration(currentDecoration)
       return
     }
-    
+
     if (previousDecoration && !currentDecoration) {
       // Decoração foi removida - iniciar animação de fechamento
       setIsDecorationClosing(true)
@@ -452,7 +453,7 @@ export default function Profile() {
         setIsDecorationClosing(false)
         setPreviousDecoration(null)
       }, 500) // Duração da animação (sincronizado com CSS)
-      
+
       return () => clearTimeout(timer)
     } else if (currentDecoration && currentDecoration !== previousDecoration) {
       // Decoração existe ou mudou
@@ -485,7 +486,7 @@ export default function Profile() {
   const displayName = userData.global_name || userData.username
   const isPlaying = !!userData.spotify
   const spotifyData = userData.spotify || userData.ultima_musica
-  const albumArt = spotifyData 
+  const albumArt = spotifyData
     ? (userData.spotify?.assets?.grande || userData.ultima_musica?.album_art)
     : null
   const trackTitle = spotifyData
@@ -535,10 +536,10 @@ export default function Profile() {
     const start = new Date(atividade.timestamps.start).getTime()
     const now = currentTime
     const elapsed = Math.floor((now - start) / 1000) // segundos
-    
+
     const minutes = Math.floor(elapsed / 60)
     const seconds = elapsed % 60
-    
+
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
@@ -552,28 +553,29 @@ export default function Profile() {
     const nomeLower = nome.toLowerCase()
     const iconMap: Record<string, any> = {
       'roblox': robloxIcon,
-      'valorant': valorantIcon
+      'valorant': valorantIcon,
+      'beamng.drive': beamngIcon
     }
     const icon = iconMap[nomeLower]
     if (!icon) return null
-    
+
     // Se for string, retorna direto
     if (typeof icon === 'string') {
       return icon
     }
-    
+
     // Se for objeto, tenta .src ou .default
     if (typeof icon === 'object') {
       return (icon as any).src || (icon as any).default || null
     }
-    
+
     return null
   }
 
   // Função para determinar a extensão do ícone do Discord
   const getDiscordIconUrl = (guildId: string, iconHash: string | null) => {
     if (!iconHash) return null
-    
+
     // Se começa com "a_", é animado (gif), senão é estático (png)
     const extension = iconHash.startsWith('a_') ? 'gif' : 'png'
     return `https://cdn.discordapp.com/icons/${guildId}/${iconHash}.${extension}?size=256`
@@ -600,7 +602,7 @@ export default function Profile() {
 
           <div className={styles.profileRow}>
             <div className={styles.avatarWrapper}>
-              <div 
+              <div
                 key={userData.avatar}
                 className={styles.avatar}
                 style={{
@@ -611,20 +613,20 @@ export default function Profile() {
                 }}
               />
               {(userData.avatarDecoration || (isDecorationClosing && previousDecoration)) && (
-                <img 
+                <img
                   key={userData.avatarDecoration || previousDecoration}
-                  src={userData.avatarDecoration || previousDecoration || ''} 
+                  src={userData.avatarDecoration || previousDecoration || ''}
                   alt="Avatar decoration"
                   className={`${styles.avatarDecoration} ${isDecorationClosing ? styles.avatarDecorationClosing : ''}`}
                 />
               )}
               {userData.user_status && (
-                <div 
+                <div
                   key={`${userData.user_status.status}-${userData.user_status.img}`}
                   className={styles.statusIndicator}
                 >
-                  <img 
-                    src={userData.user_status.img} 
+                  <img
+                    src={userData.user_status.img}
                     alt={userData.user_status.status}
                     className={styles.statusIcon}
                   />
@@ -689,7 +691,7 @@ export default function Profile() {
                   const localIcon = getActivityIcon(atividade.nome)
                   const apiIconUrl = atividade.assets?.grande || atividade.assets?.pequena
                   const iconSrc = localIcon || apiIconUrl
-                  
+
                   return (
                     <div key={`${atividade.nome}-${atividade.timestamps?.start}`} className={styles.activityItem}>
                       {iconSrc ? (
@@ -721,7 +723,7 @@ export default function Profile() {
           )}
 
           {spotifyData && trackTitle && (
-            <div 
+            <div
               key={`${isPlaying ? 'playing' : 'last'}-${trackTitle}`}
               className={styles.section}
             >
@@ -744,7 +746,7 @@ export default function Profile() {
               </div>
 
               <div className={styles.spotifyTop}>
-                <div 
+                <div
                   key={albumArt || 'no-art'}
                   className={styles.cover}
                   aria-hidden="true"
@@ -767,7 +769,7 @@ export default function Profile() {
                     <span>{getTotalDuration()}</span>
                   </div>
                   <div className={styles.bar}>
-                    <div 
+                    <div
                       className={styles.barFill}
                       style={{ width: `${getProgress()}%` }}
                     />
@@ -791,7 +793,7 @@ export default function Profile() {
             onMouseMove={courtCard.handleMouseMove}
             onMouseLeave={courtCard.handleMouseLeave}
           >
-            <div 
+            <div
               className={`${styles.courtIcon} ${discordData.guild.icon ? styles.courtIconWithImage : ''}`}
               aria-hidden="true"
               style={discordData.guild.icon ? {
@@ -814,13 +816,13 @@ export default function Profile() {
                   <span className={styles.person} aria-hidden="true">
                     👤
                   </span>
-                  {discordData.profile?.member_count 
+                  {discordData.profile?.member_count
                     ? `${(discordData.profile.member_count / 1000).toFixed(1)}k`
                     : '0k'}
                 </span>
                 <span className={styles.stat}>
                   <span className={styles.dot} aria-hidden="true" />
-                  {discordData.profile?.online_count 
+                  {discordData.profile?.online_count
                     ? `${(discordData.profile.online_count / 1000).toFixed(1)}k online`
                     : '0k online'}
                 </span>

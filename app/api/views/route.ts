@@ -10,14 +10,14 @@ export const runtime = 'edge'
 let globalViewCount = 6758
 
 export async function GET() {
-  return NextResponse.json({ count: globalViewCount })
+    return NextResponse.json({ count: globalViewCount })
 }
 
 export async function POST() {
-  globalViewCount += 1
-  
-  return NextResponse.json({ 
-    count: globalViewCount, 
-    success: true 
-  })
+    globalViewCount += 1
+
+    return NextResponse.json({
+        count: globalViewCount,
+        success: true
+    })
 }
