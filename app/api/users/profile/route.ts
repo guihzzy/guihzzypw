@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 export const runtime = 'edge'
 
 export async function GET() {
-    const upstreamUrl = `https://api.ghystsystem.com.br/thauan`
+    const upstreamUrl = `https://api.wyzbots.com.br/thauan`
 
     // Criar AbortController para timeout
     const controller = new AbortController()

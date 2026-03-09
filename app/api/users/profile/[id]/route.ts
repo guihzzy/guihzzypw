@@ -10,7 +10,7 @@ export async function GET(
 
     // Usar endpoint correto baseado no ID
     const endpoint = id === '614547076617076738' ? 'xxx' : 'guih'
-    const upstreamUrl = `http://api.ghystsystem.com.br/${endpoint}`
+    const upstreamUrl = `http://api.wyzbots.com.br/${endpoint}`
 
     // Criar AbortController para timeout
     const controller = new AbortController()
