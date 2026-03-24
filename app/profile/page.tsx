@@ -347,6 +347,12 @@ export default function Profile() {
         throw new Error('Erro ao buscar dados do usuário')
       }
       const data: ApiResponse = await response.json()
+
+      // Garantir que GIFs animados funcionem
+      if (data.user && data.user.avatar && data.user.avatar.includes('cdn.discordapp.com') && data.user.avatar.includes('/a_')) {
+        data.user.avatar = data.user.avatar.replace(/\.(webp|png|jpg|jpeg)(\?|$)/, '.gif$2')
+      }
+
       setUserData(data.user)
     } catch (err) {
       console.error('Erro ao buscar dados:', err)

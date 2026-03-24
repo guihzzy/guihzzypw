@@ -796,6 +796,11 @@ export default function Home() {
 
       const data = apiResponse.data
 
+      // Garantir que GIFs animados funcionem
+      if (data.avatar && data.avatar.includes('cdn.discordapp.com') && data.avatar.includes('/a_')) {
+        data.avatar = data.avatar.replace(/\.(webp|png|jpg|jpeg)(\?|$)/, '.gif$2')
+      }
+
       // Mapear badges
       const mappedBadges: MappedBadge[] = (data.badges || []).map((badge) => {
         const isUrl = badge.icon.startsWith('http')

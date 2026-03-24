@@ -41,14 +41,30 @@ export async function GET(
             )
         }
 
-        const text = await res.text()
+        let data = await res.json()
+
+        // Função para formatar a URL do avatar do Discord
+        const formatAvatarUrl = (url: string) => {
+            if (typeof url !== 'string') return url
+            if (url.includes('cdn.discordapp.com/avatars/') && url.includes('/a_')) {
+                // Se o hash começa com a_, é animado. Troca .webp/.png por .gif
+                return url.replace(/\.(webp|png|jpg|jpeg)(\?|$)/, '.gif$2')
+            }
+            return url
+        }
+
+        // Aplicar formatação se os dados forem do perfil
+        if (data && data.data && data.data.avatar) {
+            data.data.avatar = formatAvatarUrl(data.data.avatar)
+        } else if (data && data.user && data.user.avatar) {
+            // Caso o formato varie dependendo do endpoint
+            data.user.avatar = formatAvatarUrl(data.user.avatar)
+        }
 
         // repassa status e conteúdo (json) do upstream
-        return new NextResponse(text, {
+        return NextResponse.json(data, {
             status: res.status,
             headers: {
-                'content-type': res.headers.get('content-type') ?? 'application/json; charset=utf-8',
-                // útil se alguém consumir essa rota externamente também
                 'access-control-allow-origin': '*',
             },
         })
