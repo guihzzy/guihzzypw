@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-
-export const runtime = 'edge'
+import { buscarDadosNaWyzBots } from '@/lib/api-client'
 
 export async function GET(
     _req: Request,
@@ -10,38 +9,9 @@ export async function GET(
 
     // Usar endpoint correto baseado no ID
     const endpoint = id === '614547076617076738' ? 'xxx' : 'guih'
-    const upstreamUrl = `http://api.wyzbots.com.br/${endpoint}`
-
-    // Criar AbortController para timeout
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 segundos de timeout
-
-    console.log(`Tentando conectar com: ${upstreamUrl}`)
 
     try {
-        const res = await fetch(upstreamUrl, {
-            // evita cache do Next/edge para refletir presença/spotify rápido
-            cache: 'no-store',
-            headers: {
-                accept: 'application/json',
-                'User-Agent': 'site-profile/1.0',
-            },
-            signal: controller.signal,
-        })
-
-        console.log(`Resposta recebida: ${res.status} ${res.statusText}`)
-
-        clearTimeout(timeoutId)
-
-        // Se a resposta não for OK, tratar como erro
-        if (!res.ok) {
-            return NextResponse.json(
-                { success: false, error: `Upstream returned ${res.status}` },
-                { status: res.status >= 500 ? 502 : res.status }
-            )
-        }
-
-        let data = await res.json()
+        let data = await buscarDadosNaWyzBots(`/${endpoint}`)
 
         // Função para formatar a URL do avatar do Discord
         const formatAvatarUrl = (url: string) => {
@@ -61,20 +31,16 @@ export async function GET(
             data.user.avatar = formatAvatarUrl(data.user.avatar)
         }
 
-        // repassa status e conteúdo (json) do upstream
         return NextResponse.json(data, {
-            status: res.status,
+            status: 200,
             headers: {
                 'access-control-allow-origin': '*',
             },
         })
     } catch (err: any) {
-        clearTimeout(timeoutId)
-
-        console.error('Proxy error:', err.message || err)
+        console.error('Erro ao buscar dados:', err.message || err)
 
         // Retornar dados mockados em caso de qualquer erro de conexão
-        // Isso evita que o site quebre quando a API externa está offline
         const mockData = {
             success: true,
             data: {
