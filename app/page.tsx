@@ -530,7 +530,7 @@ const getPlayingTime = (atividade: MappedOutraAtividade, currentTime: number) =>
 
 const getRelationshipTime = (currentTime: number) => {
   // Data de início do relacionamento: 10/04/2026 - 04:56
-  const startDate = new Date('2026-04-10T05:05:00').getTime()
+  const startDate = new Date('2026-04-10T05:10:00').getTime()
   const elapsed = Math.max(0, Math.floor((currentTime - startDate) / 1000))
 
   const months = Math.floor(elapsed / (30 * 24 * 60 * 60))
