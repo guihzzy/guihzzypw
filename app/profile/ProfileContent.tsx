@@ -65,7 +65,11 @@ export default function ProfileContent({ initialData }: ProfileContentProps) {
     // Polling para atualizar dados em tempo real (Spotify, status, etc)
     const apiInterval = setInterval(async () => {
       try {
-        const response = await fetch('/api/users/profile/408002057522380801')
+        const response = await fetch('/api/users/profile/408002057522380801', {
+          headers: {
+            'x-internal-auth': 'internal-request'
+          }
+        })
         if (response.ok) {
           const data = await response.json()
           const user = data.data || data.user || data

@@ -528,6 +528,25 @@ const getPlayingTime = (atividade: MappedOutraAtividade, currentTime: number) =>
   return `${m}:${sStr}`
 }
 
+const getRelationshipTime = (currentTime: number) => {
+  // Data de início do relacionamento: 10/04/2026 - 04:56
+  const startDate = new Date('2026-04-10T04:58:00').getTime()
+  const elapsed = Math.max(0, Math.floor((currentTime - startDate) / 1000))
+
+  const months = Math.floor(elapsed / (30 * 24 * 60 * 60))
+  const days = Math.floor((elapsed % (30 * 24 * 60 * 60)) / (24 * 60 * 60))
+  const hours = Math.floor((elapsed % (24 * 60 * 60)) / (60 * 60))
+  const minutes = Math.floor((elapsed % (60 * 60)) / 60)
+
+  const parts = []
+  if (months > 0) parts.push(`${months}m`)
+  if (days > 0) parts.push(`${days}d`)
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0 || parts.length === 0) parts.push(`${minutes}m`)
+
+  return parts.join(', ')
+}
+
 const ProfileCard = React.memo(({
   user,
   currentTime,
@@ -539,7 +558,7 @@ const ProfileCard = React.memo(({
 }: {
   user: User
   currentTime: number
-  onAvatarClick: (e: React.MouseEvent<HTMLElement>, rect: DOMRect) => void
+  onAvatarClick: (e: React.MouseEvent<HTMLElement>, rect: DOMRect, user: User) => void
   valorantIcon: any
   previousDecoration: string | null
   isDecorationClosing: boolean
@@ -630,7 +649,7 @@ const ProfileCard = React.memo(({
           onClick={(e) => {
             e.preventDefault(); e.stopPropagation();
             if (avatarRef.current) {
-              onAvatarClick(e, avatarRef.current.getBoundingClientRect())
+              onAvatarClick(e, avatarRef.current.getBoundingClientRect(), user)
             }
           }}
           onTouchStart={(e) => e.stopPropagation()}
@@ -737,7 +756,6 @@ const ProfileCard = React.memo(({
 
 export default function Home() {
   const mainCard = useMouseGlow<HTMLDivElement>()
-  const courtCard = useMouseGlow()
   const audioRef = useRef<HTMLAudioElement>(null)
   // Como a API não manda "start" das atividades, mantemos um start local por atividade
   const activityStartMsRef = useRef<Map<string, number>>(new Map())
@@ -749,7 +767,7 @@ export default function Home() {
     fetchedAtMs: number
   } | null>(null)
   const [userData, setUserData] = useState<User | null>(null)
-  const [discordData, setDiscordData] = useState<DiscordInviteResponse | null>(null)
+  const [userData2, setUserData2] = useState<User | null>(null) // Segundo perfil - Mazzo
   const [loading, setLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
   const [currentTime, setCurrentTime] = useState(Date.now())
@@ -762,6 +780,7 @@ export default function Home() {
   const [showAvatarModal, setShowAvatarModal] = useState(false)
   const [avatarModalClosing, setAvatarModalClosing] = useState(false)
   const [avatarStartPosition, setAvatarStartPosition] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const [avatarModalUser, setAvatarModalUser] = useState<User | null>(null) // Usuário do modal
   const [downloadSuccess, setDownloadSuccess] = useState(false)
   const avatarRef = useRef<HTMLDivElement>(null)
 
@@ -936,21 +955,111 @@ export default function Home() {
       console.error('Erro ao buscar dados:', err)
       setHasError(true)
       // Manter userData como null para mostrar silhueta
-    } finally {
-      setLoading(false)
     }
   }
 
-  const fetchDiscordData = async () => {
+  const fetchUserData2 = async () => {
     try {
-      const response = await fetch('https://canary.discord.com/api/v10/invites/h1t')
+      const response = await fetch('/api/users/profile/931243240789794836')
       if (!response.ok) {
-        throw new Error('Erro ao buscar dados do Discord')
+        throw new Error('Erro ao buscar dados do segundo usuário')
       }
-      const data: DiscordInviteResponse = await response.json()
-      setDiscordData(data)
+      const apiResponse: ApiResponse = await response.json()
+
+      if (!apiResponse.success || !apiResponse.data) {
+        throw new Error('Resposta da API inválida')
+      }
+
+      const data = apiResponse.data
+
+      // Garantir que GIFs animados funcionem
+      if (data.avatar && data.avatar.includes('cdn.discordapp.com') && data.avatar.includes('/a_')) {
+        data.avatar = data.avatar.replace(/\.(webp|png|jpg|jpeg)(\?|$)/, '.gif$2')
+      }
+
+      // Mapear badges
+      const mappedBadges: MappedBadge[] = (data.badges || []).map((badge) => {
+        const isUrl = badge.icon.startsWith('http')
+        return {
+          name: badge.id,
+          url: isUrl ? badge.icon : `https://cdn.discordapp.com/badge-icons/${badge.icon}.png`,
+          popup: badge.description,
+        }
+      })
+
+      // Mapear spotify
+      const mappedSpotify: MappedSpotifyData | null = data.spotify ? {
+        musica: data.spotify.musica,
+        artista: data.spotify.artista,
+        album_art: data.spotify.album_art,
+        started_at: data.spotify.started_at,
+        ends_at: data.spotify.ends_at ?? null,
+        duration: typeof data.spotify.duration === 'number' ? data.spotify.duration : null,
+        duration_formatted: data.spotify.duration_formatted ?? null,
+        timestamps: {
+          start: data.spotify.started_at,
+          end: data.spotify.ends_at ?? null,
+        },
+      } : null
+
+      // Mapear última música
+      const mappedUltimaMusica: MappedUltimaMusica | null = data.ultima_musica_spotify ? {
+        musica: data.ultima_musica_spotify.musica,
+        artista: data.ultima_musica_spotify.artista,
+        album_art: data.ultima_musica_spotify.album_art,
+        started_at: data.ultima_musica_spotify.started_at,
+        saved_at: data.ultima_musica_spotify.saved_at,
+        formatted_time: data.ultima_musica_spotify.formatted_time,
+      } : null
+
+      // Mapear outras atividades
+      const makeActivityKey = (atividade: OutraAtividade) => {
+        return [
+          atividade.name ?? '',
+          atividade.details ?? '',
+          atividade.state ?? '',
+          atividade.assets ?? '',
+        ].join('|')
+      }
+
+      const seenKeys = new Set<string>()
+      const mappedOutrasAtividades: MappedOutraAtividade[] = (data.outras_atividades || [])
+        .filter((atividade) => {
+          const key = makeActivityKey(atividade)
+          if (seenKeys.has(key)) return false
+          seenKeys.add(key)
+          return true
+        })
+        .map((atividade) => ({
+          nome: atividade.name,
+          detalhe: atividade.details,
+          state: atividade.state,
+          assets: {
+            grande: atividade.assets || null,
+            pequena: null,
+          },
+          timestamps: {
+            start: atividade.started_at || new Date().toISOString(),
+            end: null,
+          },
+        }))
+
+      const mappedUser: User = {
+        id: data.id,
+        username: data.username,
+        global_name: data.global_name,
+        avatar: data.avatar,
+        avatarDecoration: data.avatarDecoration || null,
+        badges: mappedBadges,
+        spotify: mappedSpotify,
+        ultima_musica: mappedUltimaMusica,
+        user_status: data.user_status,
+        outras_atividades: mappedOutrasAtividades.length > 0 ? mappedOutrasAtividades : null,
+      }
+
+      setUserData2(mappedUser)
     } catch (err) {
-      console.error('Erro ao buscar dados do Discord:', err)
+      console.error('Erro ao buscar dados do segundo perfil:', err)
     }
   }
 
@@ -1311,19 +1420,23 @@ export default function Home() {
   }
 
   useEffect(() => {
+    const loadBothProfiles = async () => {
+      setLoading(true)
+      await Promise.all([
+        fetchUserData(),
+        fetchUserData2()
+      ])
+      setLoading(false)
+    }
+
     fetchViewCount()
-    fetchUserData()
-    fetchDiscordData()
+    loadBothProfiles()
 
     // Atualizar dados da API a cada 5 segundos
     const apiInterval = setInterval(() => {
       fetchUserData()
+      fetchUserData2() // Atualizar segundo perfil
     }, 5000)
-
-    // Atualizar dados do Discord a cada 10 segundos (menos frequente)
-    const discordInterval = setInterval(() => {
-      fetchDiscordData()
-    }, 10000)
 
     // Atualizar tempo atual a cada segundo (para progresso do Spotify)
     const timeInterval = setInterval(() => {
@@ -1332,7 +1445,6 @@ export default function Home() {
 
     return () => {
       clearInterval(apiInterval)
-      clearInterval(discordInterval)
       clearInterval(timeInterval)
     }
   }, [])
@@ -1401,15 +1513,6 @@ export default function Home() {
     }
   }, [showAvatarModal])
 
-  // Função para determinar a extensão do ícone do Discord
-  const getDiscordIconUrl = (guildId: string, iconHash: string | null) => {
-    if (!iconHash) return null
-
-    // Se começa com "a_", é animado (gif), senão é estático (png)
-    const extension = iconHash.startsWith('a_') ? 'gif' : 'png'
-    return `https://cdn.discordapp.com/icons/${guildId}/${iconHash}.${extension}?size=256`
-  }
-
   // Mostrar silhueta enquanto carrega ou quando não tiver dados
   if (loading || !userData) {
     return (
@@ -1420,55 +1523,114 @@ export default function Home() {
         </div>
 
         <main className={styles.stack}>
-          <section
-            className={styles.card}
-            ref={mainCard.ref}
-            onMouseMove={mainCard.handleMouseMove}
-            onMouseLeave={mainCard.handleMouseLeave}
-          >
-            <div className={styles.profileRow}>
-              <div className={styles.avatarWrapper}>
-                <div className={`${styles.avatar} ${styles.avatarSkeleton}`} />
-              </div>
-              <div className={styles.profileMeta}>
-                <div className={styles.nameBlock}>
-                  <div className={styles.skeletonLine} style={{ width: '60%', height: '20px', marginBottom: '8px' }} />
-                  <div className={styles.skeletonLine} style={{ width: '40%', height: '14px' }} />
+          {/* Skeleton 1 - Guih */}
+          <div className={styles.profileWrapper}>
+            <div className={styles.profileTitle} style={{ opacity: 0, pointerEvents: 'none' }}>placeholder</div>
+            <section
+              className={styles.card}
+              ref={mainCard.ref}
+              onMouseMove={mainCard.handleMouseMove}
+              onMouseLeave={mainCard.handleMouseLeave}
+            >
+              <div className={styles.profileRow}>
+                <div className={styles.avatarWrapper}>
+                  <div className={`${styles.avatar} ${styles.avatarSkeleton}`} />
                 </div>
-                <div className={styles.badges} style={{ marginTop: '10px' }}>
-                  <div className={styles.skeletonBadge} />
-                  <div className={styles.skeletonBadge} />
+                <div className={styles.profileMeta}>
+                  <div className={styles.nameBlock}>
+                    <div className={styles.skeletonLine} style={{ width: '60%', height: '20px', marginBottom: '8px' }} />
+                    <div className={styles.skeletonLine} style={{ width: '40%', height: '14px' }} />
+                  </div>
+                  <div className={styles.badges} style={{ marginTop: '10px' }}>
+                    <div className={styles.skeletonBadge} />
+                    <div className={styles.skeletonBadge} />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <IconGlobe className={styles.sectionIcon} />
-                <span>Redes Sociais</span>
-                <div className={styles.sectionLine} />
-              </div>
-              <div className={styles.socialRow}>
-                <div className={styles.skeletonSocialBtn} />
-                <div className={styles.skeletonSocialBtn} />
-              </div>
-            </div>
-
-            <div className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <IconMusic className={styles.sectionIcon} />
-                <span>Ouvindo Spotify</span>
-                <div className={styles.sectionLine} />
-              </div>
-              <div className={styles.spotifyTop}>
-                <div className={`${styles.cover} ${styles.skeletonCover}`} />
-                <div className={styles.track}>
-                  <div className={styles.skeletonLine} style={{ width: '70%', height: '16px', marginBottom: '8px' }} />
-                  <div className={styles.skeletonLine} style={{ width: '50%', height: '14px' }} />
+              <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                  <IconGlobe className={styles.sectionIcon} />
+                  <span>Redes Sociais</span>
+                  <div className={styles.sectionLine} />
+                </div>
+                <div className={styles.socialRow}>
+                  <div className={styles.skeletonSocialBtn} />
+                  <div className={styles.skeletonSocialBtn} />
                 </div>
               </div>
+
+              <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                  <IconMusic className={styles.sectionIcon} />
+                  <span>Ouvindo Spotify</span>
+                  <div className={styles.sectionLine} />
+                </div>
+                <div className={styles.spotifyTop}>
+                  <div className={`${styles.cover} ${styles.skeletonCover}`} />
+                  <div className={styles.track}>
+                    <div className={styles.skeletonLine} style={{ width: '70%', height: '16px', marginBottom: '8px' }} />
+                    <div className={styles.skeletonLine} style={{ width: '50%', height: '14px' }} />
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Skeleton 2 - Mazzo */}
+          <div className={styles.profileWrapper}>
+            <div className={styles.profileTitle}> my girlfriend💕</div>
+            <section className={styles.card}>
+              <div className={styles.profileRow}>
+                <div className={styles.avatarWrapper}>
+                  <div className={`${styles.avatar} ${styles.avatarSkeleton}`} />
+                </div>
+                <div className={styles.profileMeta}>
+                  <div className={styles.nameBlock}>
+                    <div className={styles.skeletonLine} style={{ width: '60%', height: '20px', marginBottom: '8px' }} />
+                    <div className={styles.skeletonLine} style={{ width: '40%', height: '14px' }} />
+                  </div>
+                  <div className={styles.badges} style={{ marginTop: '10px' }}>
+                    <div className={styles.skeletonBadge} />
+                    <div className={styles.skeletonBadge} />
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                  <IconGlobe className={styles.sectionIcon} />
+                  <span>Redes Sociais</span>
+                  <div className={styles.sectionLine} />
+                </div>
+                <div className={styles.socialRow}>
+                  <div className={styles.skeletonSocialBtn} />
+                  <div className={styles.skeletonSocialBtn} />
+                </div>
+              </div>
+
+              <div className={styles.section}>
+                <div className={styles.sectionHeader}>
+                  <IconMusic className={styles.sectionIcon} />
+                  <span>Ouvindo Spotify</span>
+                  <div className={styles.sectionLine} />
+                </div>
+                <div className={styles.spotifyTop}>
+                  <div className={`${styles.cover} ${styles.skeletonCover}`} />
+                  <div className={styles.track}>
+                    <div className={styles.skeletonLine} style={{ width: '70%', height: '16px', marginBottom: '8px' }} />
+                    <div className={styles.skeletonLine} style={{ width: '50%', height: '14px' }} />
+                  </div>
+                </div>
+              </div>
+            </section>
+            <div className={styles.relationshipTimer}>
+              <div className={styles.timerLabel}>Juntos há</div>
+              <div className={styles.timerValue}>
+                <div className={styles.skeletonLine} style={{ width: '120px', height: '18px', margin: '0 auto' }} />
+              </div>
             </div>
-          </section>
+          </div>
         </main>
       </div>
     )
@@ -1482,8 +1644,9 @@ export default function Home() {
   // Usar perfil alternativo se estiver flipado e carregado
   const activeUserData = isFlipped && alternateUserData ? alternateUserData : userData
 
-  const handleAvatarModalOpen = (e: React.MouseEvent<HTMLElement>, rect: DOMRect) => {
+  const handleAvatarModalOpen = (e: React.MouseEvent<HTMLElement>, rect: DOMRect, user: User) => {
     setAvatarStartPosition({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height })
+    setAvatarModalUser(user)
     setShowAvatarModal(true)
     setAvatarModalClosing(false)
   }
@@ -1514,95 +1677,61 @@ export default function Home() {
 
       <main className={styles.stack}>
         {/* Card principal (perfil + redes + spotify) */}
-        <div
-          className={styles.cardWrapper}
-          ref={mainCard.ref}
-          onMouseMove={mainCard.handleMouseMove}
-          onMouseLeave={mainCard.handleMouseLeave}
-          onClick={handleAvatarClick}
-        >
-          {/* Base Card (Novo perfil - Fundo) */}
-          <ProfileCard
-            user={activeUserData}
-            currentTime={currentTime}
-            onAvatarClick={handleAvatarModalOpen}
-            valorantIcon={valorantIcon}
-            previousDecoration={previousDecoration}
-            isDecorationClosing={isDecorationClosing}
-          />
+        <div className={styles.profileWrapper}>
+          <div className={styles.profileTitle} style={{ opacity: 0, pointerEvents: 'none' }}>placeholder</div>
+          <div
+            className={styles.cardWrapper}
+            ref={mainCard.ref}
+            onMouseMove={mainCard.handleMouseMove}
+            onMouseLeave={mainCard.handleMouseLeave}
+            onClick={handleAvatarClick}
+          >
+            {/* Base Card (Novo perfil - Fundo) */}
+            <ProfileCard
+              user={activeUserData}
+              currentTime={currentTime}
+              onAvatarClick={handleAvatarModalOpen}
+              valorantIcon={valorantIcon}
+              previousDecoration={previousDecoration}
+              isDecorationClosing={isDecorationClosing}
+            />
 
-          {/* Overlay Scan (Antigo perfil - Frente - Sendo removido) */}
-          {isScanning && scanOverlayUser && (
-            <>
-              <div className={styles.scanOverlay}>
-                <ProfileCard
-                  user={scanOverlayUser}
-                  currentTime={currentTime}
-                  onAvatarClick={handleAvatarModalOpen}
-                  valorantIcon={valorantIcon}
-                  previousDecoration={previousDecoration}
-                  isDecorationClosing={isDecorationClosing}
-                  className={styles.noBorder}
-                />
-              </div>
-            </>
-          )}
+            {/* Overlay Scan (Antigo perfil - Frente - Sendo removido) */}
+            {isScanning && scanOverlayUser && (
+              <>
+                <div className={styles.scanOverlay}>
+                  <ProfileCard
+                    user={scanOverlayUser}
+                    currentTime={currentTime}
+                    onAvatarClick={handleAvatarModalOpen}
+                    valorantIcon={valorantIcon}
+                    previousDecoration={previousDecoration}
+                    isDecorationClosing={isDecorationClosing}
+                    className={styles.noBorder}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Card separado (Discord Server) */}
-        {discordData && (
-          <section
-            className={styles.courtCard}
-            ref={courtCard.ref}
-            onMouseMove={courtCard.handleMouseMove}
-            onMouseLeave={courtCard.handleMouseLeave}
-          >
-            <div
-              className={`${styles.courtIcon} ${discordData.guild.icon ? styles.courtIconWithImage : ''}`}
-              aria-hidden="true"
-              style={discordData.guild.icon ? {
-                backgroundImage: `url(${getDiscordIconUrl(discordData.guild.id, discordData.guild.icon)})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                backgroundColor: 'transparent'
-              } as React.CSSProperties : undefined}
-            >
-              {!discordData.guild.icon && <span className={styles.cbx}>CBX</span>}
+        {/* Perfil 2 - Mazzo */}
+        {userData2 && (
+          <div className={styles.profileWrapper}>
+            <div className={styles.profileTitle}> my girlfriend💕</div>
+            <ProfileCard
+              user={userData2}
+              currentTime={currentTime}
+              onAvatarClick={handleAvatarModalOpen}
+              valorantIcon={valorantIcon}
+              previousDecoration={null}
+              isDecorationClosing={false}
+            />
+            <div className={styles.relationshipTimer}>
+              <div className={styles.timerLabel}>Juntos há</div>
+              <div className={styles.timerValue}>{getRelationshipTime(currentTime)}</div>
             </div>
-
-            <div className={styles.courtMeta}>
-              <div className={styles.courtTitle}>
-                {discordData.profile?.name || discordData.guild.name}
-              </div>
-              <div className={styles.courtStats}>
-                <span className={styles.stat}>
-                  <span className={styles.person} aria-hidden="true">
-                    👤
-                  </span>
-                  {discordData.profile?.member_count
-                    ? `${(discordData.profile.member_count / 1000).toFixed(1)}k`
-                    : '0k'}
-                </span>
-                <span className={styles.stat}>
-                  <span className={styles.dot} aria-hidden="true" />
-                  {discordData.profile?.online_count
-                    ? `${(discordData.profile.online_count / 1000).toFixed(1)}k online`
-                    : '0k online'}
-                </span>
-              </div>
-            </div>
-
-            <a
-              className={styles.arrow}
-              href="https://discord.gg/h1t"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Entrar no servidor do Discord"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7" /><path d="M7 7h10v10" /></svg>
-            </a>
-          </section>
+          </div>
         )}
       </main>
 
@@ -1625,7 +1754,7 @@ export default function Home() {
             <div
               className={`${styles.avatarModalImage} ${avatarModalClosing ? styles.avatarModalImageClosing : ''}`}
               style={{
-                backgroundImage: `url(${activeUserData?.avatar})`,
+                backgroundImage: `url(${avatarModalUser?.avatar})`,
                 backgroundSize: 'contain',
                 backgroundPosition: 'center',
                 backgroundRepeat: 'no-repeat',
@@ -1652,17 +1781,17 @@ export default function Home() {
               <button
                 className={`${styles.avatarModalBtn} ${styles.avatarModalBtnDownload} ${downloadSuccess ? styles.downloadSuccess : ''}`}
                 onClick={async () => {
-                  if (activeUserData?.avatar && !downloadSuccess) {
+                  if (avatarModalUser?.avatar && !downloadSuccess) {
                     try {
                       // Baixar a imagem via fetch para contornar CORS
-                      const response = await fetch(activeUserData.avatar)
+                      const response = await fetch(avatarModalUser.avatar)
                       const blob = await response.blob()
                       const url = window.URL.createObjectURL(blob)
 
                       // Criar link de download
                       const link = document.createElement('a')
                       link.href = url
-                      link.download = `avatar-${activeUserData.id}.png`
+                      link.download = `avatar-${avatarModalUser.id}.png`
                       document.body.appendChild(link)
                       link.click()
                       document.body.removeChild(link)
@@ -1678,7 +1807,7 @@ export default function Home() {
                     } catch (error) {
                       console.error('Erro ao baixar avatar:', error)
                       // Fallback: abrir em nova aba
-                      window.open(activeUserData.avatar, '_blank')
+                      window.open(avatarModalUser.avatar, '_blank')
                     }
                   }
                 }}
