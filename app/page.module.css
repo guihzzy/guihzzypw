@@ -134,6 +134,16 @@
   align-items: start;
 }
 
+.stackSingle {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 @media (max-width: 1200px) {
   .stack {
     grid-template-columns: 1fr;
@@ -199,6 +209,7 @@
 .profileWrapper {
   display: flex;
   flex-direction: column;
+  width: 100%;
 }
 
 /* Main card */
@@ -1092,6 +1103,25 @@
   margin-top: 12px;
   color: rgba(255, 255, 255, 0.5);
   font-size: 11px;
+}
+
+.dedicationText {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ringIcon {
+  opacity: 0.8;
+  width: 14px;
+  height: 14px;
 }
 
 .clockIcon {

@@ -7,6 +7,10 @@ import VolumeControl from './components/VolumeControl'
 import valorantIcon from './assets/valorant.png'
 import robloxIcon from './assets/roblox.png'
 import beamngIcon from './assets/BeamNG.drive.png'
+import alianceIcon from './assets/aliance.png'
+
+// Feature flag: ativar/desativar segundo perfil
+const SHOW_SECOND_PROFILE = false
 
 // Tipos da API
 interface SpotifyData {
@@ -280,6 +284,28 @@ function IconClock(props: { className?: string }) {
     >
       <circle cx="12" cy="12" r="10" />
       <path d="M12 6v6l4 2" />
+    </svg>
+  )
+}
+
+function IconRing(props: { className?: string }) {
+  return (
+    <svg
+      className={props.className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v4" />
+      <path d="M12 18v4" />
     </svg>
   )
 }
@@ -745,7 +771,10 @@ const ProfileCard = React.memo(({
                 <div className={styles.bar}><div className={styles.barFill} style={{ width: `${getProgressLocal()}%` }} /></div>
               </div>
             ) : (
-              <div className={styles.lastPlayedInfo}><IconClock className={styles.clockIcon} /><span>Reproduzida via Spotify</span></div>
+              <>
+                <div className={styles.lastPlayedInfo}><IconClock className={styles.clockIcon} /><span>Reproduzida via Spotify</span></div>
+                <div className={styles.dedicationText}>isabella <img src={typeof alianceIcon === 'string' ? alianceIcon : alianceIcon.src} alt="aliança" className={styles.ringIcon} /></div>
+              </>
             )}
           </div>
         </a>
@@ -940,7 +969,7 @@ export default function Home() {
         id: data.id,
         username: data.username,
         global_name: data.global_name,
-        avatar: data.avatar,
+        avatar: data.avatar || 'https://cdn.discordapp.com/embed/avatars/1.png',
         avatarDecoration: data.avatarDecoration || null,
         badges: mappedBadges,
         spotify: mappedSpotify,
@@ -1048,7 +1077,7 @@ export default function Home() {
         id: data.id,
         username: data.username,
         global_name: data.global_name,
-        avatar: data.avatar,
+        avatar: data.avatar || 'https://cdn.discordapp.com/embed/avatars/1.png',
         avatarDecoration: data.avatarDecoration || null,
         badges: mappedBadges,
         spotify: mappedSpotify,
@@ -1190,7 +1219,7 @@ export default function Home() {
         id: data.id,
         username: data.username,
         global_name: data.global_name,
-        avatar: data.avatar,
+        avatar: data.avatar || 'https://cdn.discordapp.com/embed/avatars/1.png',
         avatarDecoration: data.avatarDecoration || null,
         badges: mappedBadges,
         spotify: mappedSpotify,
@@ -1281,7 +1310,7 @@ export default function Home() {
                   id: data.id,
                   username: data.username,
                   global_name: data.global_name,
-                  avatar: data.avatar,
+                  avatar: data.avatar || 'https://cdn.discordapp.com/embed/avatars/1.png',
                   avatarDecoration: data.avatarDecoration || null,
                   badges: mappedBadges,
                   spotify: mappedSpotify,
@@ -1422,10 +1451,14 @@ export default function Home() {
   useEffect(() => {
     const loadBothProfiles = async () => {
       setLoading(true)
-      await Promise.all([
-        fetchUserData(),
-        fetchUserData2()
-      ])
+      if (SHOW_SECOND_PROFILE) {
+        await Promise.all([
+          fetchUserData(),
+          fetchUserData2()
+        ])
+      } else {
+        await fetchUserData()
+      }
       setLoading(false)
     }
 
@@ -1435,7 +1468,9 @@ export default function Home() {
     // Atualizar dados da API a cada 5 segundos
     const apiInterval = setInterval(() => {
       fetchUserData()
-      fetchUserData2() // Atualizar segundo perfil
+      if (SHOW_SECOND_PROFILE) {
+        fetchUserData2() // Atualizar segundo perfil
+      }
     }, 5000)
 
     // Atualizar tempo atual a cada segundo (para progresso do Spotify)
@@ -1522,10 +1557,10 @@ export default function Home() {
           <span key={viewCount}>{formatViewCount(viewCount)}</span>
         </div>
 
-        <main className={styles.stack}>
+        <main className={SHOW_SECOND_PROFILE ? styles.stack : styles.stackSingle}>
           {/* Skeleton 1 - Guih */}
           <div className={styles.profileWrapper}>
-            <div className={styles.profileTitle} style={{ opacity: 0, pointerEvents: 'none' }}>placeholder</div>
+            {SHOW_SECOND_PROFILE && <div className={styles.profileTitle} style={{ opacity: 0, pointerEvents: 'none' }}>placeholder</div>}
             <section
               className={styles.card}
               ref={mainCard.ref}
@@ -1578,59 +1613,61 @@ export default function Home() {
           </div>
 
           {/* Skeleton 2 - Mazzo */}
-          <div className={styles.profileWrapper}>
-            <div className={styles.profileTitle}> my girlfriend💕</div>
-            <section className={styles.card}>
-              <div className={styles.profileRow}>
-                <div className={styles.avatarWrapper}>
-                  <div className={`${styles.avatar} ${styles.avatarSkeleton}`} />
-                </div>
-                <div className={styles.profileMeta}>
-                  <div className={styles.nameBlock}>
-                    <div className={styles.skeletonLine} style={{ width: '60%', height: '20px', marginBottom: '8px' }} />
-                    <div className={styles.skeletonLine} style={{ width: '40%', height: '14px' }} />
+          {SHOW_SECOND_PROFILE && (
+            <div className={styles.profileWrapper}>
+              <div className={styles.profileTitle}>my girlfriend 💕</div>
+              <section className={styles.card}>
+                <div className={styles.profileRow}>
+                  <div className={styles.avatarWrapper}>
+                    <div className={`${styles.avatar} ${styles.avatarSkeleton}`} />
                   </div>
-                  <div className={styles.badges} style={{ marginTop: '10px' }}>
-                    <div className={styles.skeletonBadge} />
-                    <div className={styles.skeletonBadge} />
+                  <div className={styles.profileMeta}>
+                    <div className={styles.nameBlock}>
+                      <div className={styles.skeletonLine} style={{ width: '60%', height: '20px', marginBottom: '8px' }} />
+                      <div className={styles.skeletonLine} style={{ width: '40%', height: '14px' }} />
+                    </div>
+                    <div className={styles.badges} style={{ marginTop: '10px' }}>
+                      <div className={styles.skeletonBadge} />
+                      <div className={styles.skeletonBadge} />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <IconGlobe className={styles.sectionIcon} />
-                  <span>Redes Sociais</span>
-                  <div className={styles.sectionLine} />
-                </div>
-                <div className={styles.socialRow}>
-                  <div className={styles.skeletonSocialBtn} />
-                  <div className={styles.skeletonSocialBtn} />
-                </div>
-              </div>
-
-              <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <IconMusic className={styles.sectionIcon} />
-                  <span>Ouvindo Spotify</span>
-                  <div className={styles.sectionLine} />
-                </div>
-                <div className={styles.spotifyTop}>
-                  <div className={`${styles.cover} ${styles.skeletonCover}`} />
-                  <div className={styles.track}>
-                    <div className={styles.skeletonLine} style={{ width: '70%', height: '16px', marginBottom: '8px' }} />
-                    <div className={styles.skeletonLine} style={{ width: '50%', height: '14px' }} />
+                <div className={styles.section}>
+                  <div className={styles.sectionHeader}>
+                    <IconGlobe className={styles.sectionIcon} />
+                    <span>Redes Sociais</span>
+                    <div className={styles.sectionLine} />
+                  </div>
+                  <div className={styles.socialRow}>
+                    <div className={styles.skeletonSocialBtn} />
+                    <div className={styles.skeletonSocialBtn} />
                   </div>
                 </div>
-              </div>
-            </section>
-            <div className={styles.relationshipTimer}>
-              <div className={styles.timerLabel}>Juntos há</div>
-              <div className={styles.timerValue}>
-                <div className={styles.skeletonLine} style={{ width: '120px', height: '18px', margin: '0 auto' }} />
+
+                <div className={styles.section}>
+                  <div className={styles.sectionHeader}>
+                    <IconMusic className={styles.sectionIcon} />
+                    <span>Ouvindo Spotify</span>
+                    <div className={styles.sectionLine} />
+                  </div>
+                  <div className={styles.spotifyTop}>
+                    <div className={`${styles.cover} ${styles.skeletonCover}`} />
+                    <div className={styles.track}>
+                      <div className={styles.skeletonLine} style={{ width: '70%', height: '16px', marginBottom: '8px' }} />
+                      <div className={styles.skeletonLine} style={{ width: '50%', height: '14px' }} />
+                    </div>
+                  </div>
+                </div>
+              </section>
+              <div className={styles.relationshipTimer}>
+                <div className={styles.timerLabel}>Juntos há</div>
+                <div className={styles.timerValue}>
+                  <div className={styles.skeletonLine} style={{ width: '120px', height: '18px', margin: '0 auto' }} />
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </main>
       </div>
     )
@@ -1675,10 +1712,10 @@ export default function Home() {
         <span key={viewCount}>{formatViewCount(viewCount)}</span>
       </div>
 
-      <main className={styles.stack}>
+      <main className={SHOW_SECOND_PROFILE ? styles.stack : styles.stackSingle}>
         {/* Card principal (perfil + redes + spotify) */}
         <div className={styles.profileWrapper}>
-          <div className={styles.profileTitle} style={{ opacity: 0, pointerEvents: 'none' }}>placeholder</div>
+          {SHOW_SECOND_PROFILE && <div className={styles.profileTitle} style={{ opacity: 0, pointerEvents: 'none' }}>placeholder</div>}
           <div
             className={styles.cardWrapper}
             ref={mainCard.ref}
@@ -1716,9 +1753,9 @@ export default function Home() {
         </div>
 
         {/* Perfil 2 - Mazzo */}
-        {userData2 && (
+        {SHOW_SECOND_PROFILE && userData2 && (
           <div className={styles.profileWrapper}>
-            <div className={styles.profileTitle}> my girlfriend💕</div>
+            <div className={styles.profileTitle}>my girlfriend 💕</div>
             <ProfileCard
               user={userData2}
               currentTime={currentTime}
