@@ -7,7 +7,7 @@ export const runtime = 'edge'
 // - Upstash Redis (gratuito): https://upstash.com
 // - Vercel KV (se usar Vercel)
 // - Um banco de dados simples
-let globalViewCount = 6758
+let globalViewCount = 9861
 
 export async function GET() {
     return NextResponse.json({ count: globalViewCount })
